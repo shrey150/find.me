@@ -1,4 +1,4 @@
-<widget xmlns="http://www.w3.org/ns/widgets" xmlns:gap="http://phonegap.com/ns/1.0" id="com.shreypandya.findme" version="1.0.0">
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:gap="http://phonegap.com/ns/1.0" id="com.shreypandya.findme" version="1.0.1">
   <name>Find.me</name>
   <description>Find the people in your life with Find.me</description>
   <author href="http://shreypandya.com" email="shrey150@yahoo.com">Shrey Pandya</author>
