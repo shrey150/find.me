@@ -39,12 +39,16 @@
         var name;
         var locationDB;
         var authEmail;
-        var timer;
+        var locationTimer;
+        var scoutTimer;
+        var latitudeArray;
+        var longitudeArray;
+        var out;
 
         window.onload = function() {
 
-            document.addEventListener("deviceready", init, false);
-            //init();
+            //document.addEventListener("deviceready", init, false);
+            init();
 
         }
 
@@ -79,7 +83,14 @@
                     } else {
 
                         console.log("Signed in: ", authData);
+
                         authEmail = authData.password.email;
+
+                        authEmail = authEmail.replace(".", "(dot)");
+                        authEmail = authEmail.replace("#", "(hashtag)");
+                        authEmail = authEmail.replace("$", "(dollarsign)");
+                        authEmail = authEmail.replace("/", "(forwardslash)");
+
                         window.location.href = "#findLocation";
 
                     }
@@ -131,11 +142,10 @@
 
                                         } else {
 
-                                            //console.log("Signed in: ", authData);
+                                            console.log("Signed in: ", authData);
                                             alert("Account created and signed in!");
                                             authEmail = authData.password.email;
 
-                                            var data = {};
                                             authEmail = authEmail.replace(".", "(dot)");
                                             authEmail = authEmail.replace("#", "(hashtag)");
                                             authEmail = authEmail.replace("$", "(dollarsign)");
@@ -174,15 +184,81 @@
 
         }
 
-        function start() {
+        function startLocating() {
 
-            timer = setInterval(getLocation, 5000);
+            locationTimer = setInterval(getLocation, 5000);
 
         } 
 
-        function stop() {
+        function stopLocating() {
 
-            clearInterval(timer);
+            clearInterval(locationTimer);
+
+        }
+
+        function startScouting() {
+
+            scoutTimer = setInterval(getScoutInfo, 5000);
+
+        }
+
+        function stopScouting() {
+
+            clearInterval(scoutTimer);
+
+        }
+
+        function getScoutInfo() {
+
+            navigator.geolocation.getCurrentPosition(scoutSuccess, scoutFailure, options);
+
+        }
+
+        function scoutSuccess(position) {
+
+            var latitude = position.coords.latitude;
+            var longitude = position.coords.longitude;
+
+            locationDB = new Firebase("https://find-me-app.firebaseio.com/" + authEmail + "/location");
+
+            locationDB.update({
+
+                    latitude: latitude,
+                    longitude: longitude
+
+            });
+
+            locationDB = new Firebase("https://find-me-app.firebaseio.com");
+
+            locationDB.once("value", function(snapshot) {
+
+                snapshot.forEach(function(childSnapshot) {
+
+                    var key = childSnapshot.val();
+
+                    if (key.location.latitude == latitude && key.location.longitude == longitude) {
+
+                        //break
+
+                    } else {
+
+                        out = "";
+
+                        out += "<p>Distance from a user: " + Math.min(convertCoordsToFeet(Math.abs(key.location.latitude - latitude)), convertCoordsToFeet(Math.abs(key.location.longitude - longitude))) + "</p>";
+
+                    }
+
+                });
+
+            });
+
+            document.getElementById("scoutInfo").innerHTML = out;
+
+        }
+
+        function scoutFailure(message) {
+
+            alert("Error: " + message.message);
 
         }
 
@@ -216,12 +292,6 @@
                 map: map,
                 title: "Your Location"
             });            
-
-            var data = {};
-            authEmail = authEmail.replace(".", "(dot)");
-            authEmail = authEmail.replace("#", "(hashtag)");
-            authEmail = authEmail.replace("$", "(dollarsign)");
-            authEmail = authEmail.replace("/", "(forwardslash)");
 
             locationDB = new Firebase("https://find-me-app.firebaseio.com/" + authEmail + "/location");
 
@@ -257,6 +327,20 @@
         function failure(message) {
 
             alert("Error: " + message.message);
+
+        }
+
+        function convertCoordsToFeet(diffCoords) {
+
+            console.log(diffCoords);
+
+            return Math.round(diffCoords * 364488.88888);
+
+        }
+
+        function switchToScoutMode() {
+
+            window.location.href = "#scoutMode";
 
         }
 
@@ -299,10 +383,16 @@
                 <button id="btnSignup" onclick="signup()">Signup and Login</button>
             </div>
             <div data-role="page" id="findLocation">
-                <button id="btnStart" onclick="start()">Start Triangulating Location</button>
-                <button id="btnStop" onclick="stop()">Stop Triangulating Location</button>
+                <button id="btnStart" onclick="startLocating()">Start Triangulating Location</button>
+                <button id="btnStop" onclick="stopLocating()">Stop Triangulating Location</button>
+                <button id="btnGoToScoutMode" onclick="switchToScoutMode()">Switch to Scout Mode</button>
                 <div id="result"></div>
                 <div id="map-canvas"></div>
+            </div>
+            <div data-role="page" id="scoutMode">
+                <button id="btnStartScoutMode" onclick="startScouting()">Start Scouting</button>
+                <button id="btnStopScoutMode" onclick="stopScouting()">Stop Scouting</button>
+                <div id="scoutInfo"></div>
             </div>
         </div>
     </body>
