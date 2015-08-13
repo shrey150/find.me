@@ -88,18 +88,18 @@
 
                 navigator.notification.alert("Welcome to Find.me! We hope you enjoy our app!", null, "Welcome!", "Ok");
                 window.localStorage.setItem("locationRefreshRate", 5000);
-                window.localStorage.setItem("backgroundMode", false);
+                window.localStorage.setItem("backgroundMode", "false");
 
             }
 
             locationRefreshRate = window.localStorage.getItem("locationRefreshRate");
             backgroundMode = window.localStorage.getItem("backgroundMode");
 
-            if (backgroundMode == true) {
+            if (backgroundMode == "true") {
 
                 cordova.plugins.backgroundMode.enable();
                 cordova.plugins.backgroundMode.setDefaults({
-                    title: "Find.me"
+                    title: "Find.me",
                     text: "Locating you in background..."
                 });
 
@@ -443,12 +443,30 @@
             window.location.href = "#settings";
             locationRefreshRate = window.localStorage.getItem("locationRefreshRate");
 
-            if (locationRefreshRate) {
+            switch (locationRefreshRate) {
 
-
-
-            } else {
-
+                case 1000:
+                    document.getElementById("locationRefreshRate").value = "1000";
+                    break;
+                case 5000:
+                    document.getElementById("locationRefreshRate").value = "5000";
+                    break;
+                case 30000:
+                    document.getElementById("locationRefreshRate").value = "30000";
+                    break;
+                case 60000:
+                    document.getElementById("locationRefreshRate").value = "60000";
+                    break;
+                case 300000:
+                    document.getElementById("locationRefreshRate").value = "300000";
+                    break;
+                case 1800000:
+                    document.getElementById("locationRefreshRate").value = "1800000";
+                    break;
+                case 3600000:
+                    document.getElementById("locationRefreshRate").value = "3600000";
+                    break;
+            }
 
 
             }
@@ -459,6 +477,21 @@
 
             locationRefreshRate = parseInt(document.getElementById("locationRefreshRate").value);
             window.localStorage.setItem("locationRefreshRate", locationRefreshRate);
+
+            backgroundMode = document.getElementById("backgroundMode").value;
+            window.localStorage.setItem("backgroundMode", backgroundMode);
+
+            if (backgroundMode == "true") {
+
+                cordova.plugins.backgroundMode.enable();
+                cordova.plugins.backgroundMode.setDefaults({
+                    title: "Find.me",
+                    text: "Locating you in background..."
+                });
+
+            }
+
+
 
             window.location.href = "#login";
 
@@ -566,6 +599,7 @@
                     <option value="1800000">Every 30 minutes</option>
                     <option value="3600000">Every hour</option>
                 </select>
+                <input type="checkbox" data-val="true" value="true" id="backgroundMode"> Background Mode
                 <button id="btnSaveSettings" onclick="saveSettings()">Save Settings</button>
                 <a href="#login">Back to Login</a>
             </div>
