@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<!--
+    Copyright (c) 2012-2014 Adobe Systems Incorporated. All rights reserved.
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+     KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+-->
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="format-detection" content="telephone=no" />
+        <meta name="msapplication-tap-highlight" content="no" />
+        <!-- WARNING: for iOS 7, remove the width=device-width and height=device-height attributes. See https://issues.apache.org/jira/browse/CB-4323 -->
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, target-densitydpi=medium-dpi, user-scalable=0" />
+        <title>Find.me</title>
+        <link rel="stylesheet" href="http://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.css" />
+        <script src="http://code.jquery.com/jquery-1.11.1.min.js"></script>
+        <script src="http://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.js"></script>
+        <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBRoFA9QFLjAn0Txc-I2KChpVr1Hh9XoUY"></script>
+        <script src="https://cdn.firebase.com/js/client/2.2.9/firebase.js"></script>
+        <script type="text/javascript" src="cordova.js"></script>
+        <script>
+
+        var options;
+        var name;
+        var locationDB;
+        var authEmail;
+        var locationTimer;
+        var scoutTimer;
+        var latitudeArray;
+        var longitudeArray;
+        var out;
+        var map;
+        var mapOptions;
+        var markers = [];
+        var marker;
+        var locationRefreshRate;
+        var backgroundMode;
+
+        window.onload = function() {
+
+            document.addEventListener("deviceready", init, false);
+            //init();
+
+        }
+
+        function init() {
+
+            document.getElementById("btnStart").style.display = "block";
+            document.getElementById("btnStop").style.display = "block";
+            options = {maximumAge: 3000, timeout: 5000, enableHighAccuracy: true};
+
+            locationDB = new Firebase("https://find-me-app.firebaseio.com/");
+
+            var oldLaunches = window.localStorage.getItem("launches");
+
+            if (oldLaunches) {
+
+                alert("test123");
+
+                window.localStorage.setItem("launches", oldLaunches++);
+
+                if (oldLaunches % 5 == 0) {
+
+                    var showRating = confirm("Thanks for being a great user! We would appreciate if you dropped us a rating.");
+
+                    if (showRating == true) {
+
+                        window.open("https://play.google.com/store/apps/details?id=com.shreypandya.findme");
+
+                    }
+
+                }
+
+            } else {
+
+                navigator.notification.alert("Welcome to Find.me! We hope you enjoy our app!", null, "Welcome!", "Ok");
+                window.localStorage.setItem("locationRefreshRate", 5000);
+                window.localStorage.setItem("backgroundMode", "false");
+
+            }
+
+            locationRefreshRate = window.localStorage.getItem("locationRefreshRate");
+            backgroundMode = window.localStorage.getItem("backgroundMode");
+
+            if (backgroundMode == "true") {
+
+                cordova.plugins.backgroundMode.enable();
+                cordova.plugins.backgroundMode.setDefaults({
+                    title: "Find.me",
+                    text: "Locating you in background..."
+                });
+
+            }
+
+        }
+
+        function login() {
+
+            var email = document.getElementById("email").value;
+            var password = document.getElementById("password").value;
+
+            locationDB.authWithPassword({
+
+                email: email,
+                password: password
+
+            }, function(error, authData) {
+
+                    if (error) {
+
+                        navigator.notification.alert("Error signing in: " + error, null, "Error", "Try Again");
+
+                    } else {
+
+                        authEmail = authData.password.email;
+
+                        authEmail = authEmail.replace(".", "(dot)");
+                        authEmail = authEmail.replace("#", "(hashtag)");
+                        authEmail = authEmail.replace("$", "(dollarsign)");
+                        authEmail = authEmail.replace("/", "(forwardslash)");
+
+                        window.location.href = "#findLocation";
+
+                    }
+
+            });
+
+
+        }
+
+        function signup() {
+
+            var signupEmail = document.getElementById("signupEmail").value;
+            var signupPassword = document.getElementById("signupPassword").value;
+            var confirmPassword = document.getElementById("confirmPassword").value;
+
+            if (signupPassword.length < 8) {
+
+                navigator.notification.alert("Password is too short: make sure it is 8 characters or more.", null, "Error", "Try Again");
+
+            } else {
+
+                if (confirmPassword == signupPassword) {
+
+                    locationDB.createUser({
+
+                        email: signupEmail,
+                        password: signupPassword
+
+                    }, function(error, userData) {
+
+                            if (error) {
+
+                                navigator.notification.alert("Error creating account: " + error, null, "Error", "Try Again");
+
+                            } else {
+
+                                locationDB.authWithPassword({
+
+                                    email: signupEmail,
+                                    password: signupPassword
+
+                                }, function(error, authData) {
+
+                                        if (error) {
+
+                                            navigator.notification.alert("Error signing in: " + error, null, "Error", "Try Again");
+
+                                        } else {
+
+                                            console.log("Signed in: ", authData);
+                                            navigator.notification.alert("Account created and signed in!", null, "Success!", "Ok");
+                                            authEmail = authData.password.email;
+
+                                            authEmail = authEmail.replace(".", "(dot)");
+                                            authEmail = authEmail.replace("#", "(hashtag)");
+                                            authEmail = authEmail.replace("$", "(dollarsign)");
+                                            authEmail = authEmail.replace("/", "(forwardslash)");
+
+                                            locationDB = new Firebase("https://find-me-app.firebaseio.com/" + authEmail);
+
+                                            locationDB.set({
+
+                                                location: {
+
+                                                    latitude: 0,
+                                                    longitude: 0
+
+                                                }
+
+                                            });
+
+                                            window.location.href = "#findLocation";
+
+                                        }
+
+                                });
+
+                            }
+
+                    });
+
+                } else {
+
+                    navigator.notification.alert("Passwords do not match.", "Error", "Try Again");
+
+                }
+
+            }
+
+        }
+
+        function startLocating() {
+
+            getLocation();
+            locationTimer = setInterval(updateLocation, locationRefreshRate);
+
+        } 
+
+        function stopLocating() {
+
+            clearInterval(locationTimer);
+
+        }
+
+        function startScouting() {
+
+            getScoutInfo();
+            scoutTimer = setInterval(getScoutInfo, locationRefreshRate);
+
+        }
+
+        function stopScouting() {
+
+            clearInterval(scoutTimer);
+
+        }
+
+        function getScoutInfo() {
+
+            navigator.geolocation.getCurrentPosition(scoutSuccess, failure, options);
+
+        }
+
+        function scoutSuccess(position) {
+
+            out = "";
+
+            var latitude = position.coords.latitude;
+            var longitude = position.coords.longitude;
+
+            locationDB = new Firebase("https://find-me-app.firebaseio.com/" + authEmail + "/location");
+
+            locationDB.update({
+
+                    latitude: latitude,
+                    longitude: longitude
+
+            });
+
+            locationDB = new Firebase("https://find-me-app.firebaseio.com");
+
+            locationDB.once("value", function(snapshot) {
+
+                snapshot.forEach(function(childSnapshot) {
+
+                    var key = childSnapshot.val();
+
+                    if (key.location.latitude == latitude && key.location.longitude == longitude) {
+
+                        //break
+
+                    } else {
+
+                        out += "<p>Distance from a user: " + Math.min(convertCoordsToFeet(Math.abs(key.location.latitude - latitude)), convertCoordsToFeet(Math.abs(key.location.longitude - longitude))) + " feet</p>";
+                        document.getElementById("scoutInfo").innerHTML = out;
+
+                    }
+
+                });
+
+            });
+
+        }
+
+        function updateLocation() {
+
+            navigator.geolocation.getCurrentPosition(updateSuccess, failure, options);
+
+        }
+
+        function updateSuccess(position) {
+
+            var latitude = position.coords.latitude;
+            var longitude = position.coords.longitude;
+
+            var out = "<strong>Latitude:</strong>" + latitude;
+            out += "<br/><strong>Longitude:</strong>" + longitude;
+
+            document.getElementById("result").innerHTML = out;
+
+            locationDB = new Firebase("https://find-me-app.firebaseio.com/" + authEmail + "/location");
+
+            locationDB.update({
+
+                    latitude: latitude,
+                    longitude: longitude
+
+            });
+
+            var latLng = new google.maps.LatLng(latitude, longitude);
+
+            var sliderZoom = parseInt(document.getElementById("sliderZoom").value);
+
+            map.setCenter(latLng);
+            map.setZoom(sliderZoom);
+
+            for (i = 0; i < markers.length; i++) {
+
+                markers[i].setMap(null);
+
+            }
+
+            markers = [];
+
+            locationDB = new Firebase("https://find-me-app.firebaseio.com");
+
+            locationDB.once("value", function(snapshot) {
+
+                snapshot.forEach(function(childSnapshot) {
+
+                    var key = childSnapshot.val();
+
+                    var latLng = new google.maps.LatLng(key.location.latitude, key.location.longitude);
+
+                    marker = new google.maps.Marker({
+                        position: latLng,
+                        map: map,
+                        title: "A Location"
+                    });
+
+                    markers.push(marker);
+
+                });
+
+            });
+
+        }
+
+        function getLocation() {
+
+            navigator.geolocation.getCurrentPosition(success, failure, options);
+
+        }
+
+        function success(position) {
+
+            var latitude = position.coords.latitude;
+            var longitude = position.coords.longitude;
+
+            var out = "<strong>Latitude:</strong>" + latitude;
+            out += "<br/><strong>Longitude:</strong>" + longitude;
+
+            document.getElementById("result").innerHTML = out;
+
+            var latLng = new google.maps.LatLng(latitude, longitude);
+
+            var sliderZoom = parseInt(document.getElementById("sliderZoom").value);
+
+            mapOptions = {
+                center: latLng,
+                zoom: sliderZoom
+            };
+
+            map = new google.maps.Map(document.getElementById("map-canvas"), mapOptions);
+
+            locationDB = new Firebase("https://find-me-app.firebaseio.com/" + authEmail + "/location");
+
+            locationDB.update({
+
+                    latitude: latitude,
+                    longitude: longitude
+
+            });
+
+            locationDB = new Firebase("https://find-me-app.firebaseio.com");
+
+            locationDB.once("value", function(snapshot) {
+
+                snapshot.forEach(function(childSnapshot) {
+
+                    var key = childSnapshot.val();
+
+                    var latLng = new google.maps.LatLng(key.location.latitude, key.location.longitude);
+
+                    marker = new google.maps.Marker({
+                        position: latLng,
+                        map: map,
+                        title: "A Location"
+                    });
+
+                    markers.push(marker);
+
+                });
+
+            });
+
+        }
+
+        function failure(message) {
+
+            navigator.notification.alert("Error: " + message.message, null, "Error", "Try Again");
+
+        }
+
+        function convertCoordsToFeet(diffCoords) {
+
+            return Math.round(diffCoords * 364488.88888);
+
+        }
+
+        function switchToScoutMode() {
+
+            window.location.href = "#scoutMode";
+
+        }
+
+        function switchToSettings() {
+
+            window.location.href = "#settings";
+            locationRefreshRate = window.localStorage.getItem("locationRefreshRate");
+
+            switch (locationRefreshRate) {
+
+                case 1000:
+                    document.getElementById("locationRefreshRate").value = "1000";
+                    break;
+                case 5000:
+                    document.getElementById("locationRefreshRate").value = "5000";
+                    break;
+                case 30000:
+                    document.getElementById("locationRefreshRate").value = "30000";
+                    break;
+                case 60000:
+                    document.getElementById("locationRefreshRate").value = "60000";
+                    break;
+                case 300000:
+                    document.getElementById("locationRefreshRate").value = "300000";
+                    break;
+                case 1800000:
+                    document.getElementById("locationRefreshRate").value = "1800000";
+                    break;
+                case 3600000:
+                    document.getElementById("locationRefreshRate").value = "3600000";
+                    break;
+            }
+
+
+            }
+
+        }
+
+        function saveSettings() {
+
+            locationRefreshRate = parseInt(document.getElementById("locationRefreshRate").value);
+            window.localStorage.setItem("locationRefreshRate", locationRefreshRate);
+
+            backgroundMode = document.getElementById("backgroundMode").value;
+            window.localStorage.setItem("backgroundMode", backgroundMode);
+
+            if (backgroundMode == "true") {
+
+                cordova.plugins.backgroundMode.enable();
+                cordova.plugins.backgroundMode.setDefaults({
+                    title: "Find.me",
+                    text: "Locating you in background..."
+                });
+
+            }
+
+
+
+            window.location.href = "#login";
+
+        }
+
+        function backToLogin() {
+
+            window.location.href = "#login";
+
+        }
+
+        function backToLocation() {
+
+            window.location.href = "#findLocation";
+
+        }
+
+        </script>
+        <style>
+
+        #container {
+            margin: 5px;
+        }
+
+        #btnStart {
+            display: none;
+        }
+
+        #btnStop {
+            display: none;
+        }
+
+        #map-canvas {
+            height: 400px;
+            width: 100%;
+        }
+
+        .logo {
+
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+
+        }
+
+        .heading {
+
+            text-align: center;
+
+        }
+
+        </style>
+    </head>
+    <body>
+        <div id="container">
+            <div data-role="page" id="login">
+                <h1 class="heading">Find.me</h1>
+                <img src="icon.png" height="64" width="64" class="logo">
+                <input type="email" placeholder="Email" id="email">
+                <input type="password" placeholder="Password" id="password">
+                <button id="btnLogin" onclick="login()">Login</button>
+                <p style="text-align: center">Don't have an account? <a href="#signup">Signup</a></p>
+                <button onclick="switchToSettings()">Settings</button>
+            </div>
+            <div data-role="page" id="signup">
+                <h1 class="heading">Signup</h1>
+                <img src="icon.png" height="64" width="64" class="logo">
+                <input type="email" placeholder="Email" id="signupEmail">
+                <input type="password" placeholder="Password" id="signupPassword">
+                <input type="password" placeholder="Confirm Password" id="confirmPassword">
+                <button id="btnSignup" onclick="signup()">Signup and Login</button>
+                <a href="#login">Back to Login</a>
+            </div>
+            <div data-role="page" id="findLocation">
+                <h1 class="heading">Find Locations</h1>
+                <img src="icon.png" height="64" width="64" class="logo">
+                <button id="btnStart" onclick="startLocating()">Start Triangulating Location</button>
+                <button id="btnStop" onclick="stopLocating()">Stop Triangulating Location</button>
+                <label for="sliderZoom">Zoom:</label>
+                <input type="range" id="sliderZoom" min="0" max="20" value="10" data-highlight="true">
+                <button id="btnGoToScoutMode" onclick="switchToScoutMode()">Switch to Scout Mode</button>
+                <a href="#login">Back to Login</a>
+                <div id="result"></div>
+                <div id="map-canvas"></div>
+            </div>
+            <div data-role="page" id="scoutMode">
+                <h1 class="heading">Scout Mode</h1>
+                <img src="icon.png" height="64" width="64" class="logo">
+                <p>Scout Mode lets you find the nearest user's location in feet.</p>
+                <button id="btnStartScoutMode" onclick="startScouting()">Start Scouting</button>
+                <button id="btnStopScoutMode" onclick="stopScouting()">Stop Scouting</button>
+                <a href="#findLocation">Back to Locating</a>
+                <div id="scoutInfo"></div>
+            </div>
+            <div data-role="page" id="settings">
+                <h1 class="heading">Settings</h1>
+                <img src="icon.png" height="64" width="64" class="logo">
+                <br><p style="text-align: center">Location Refresh Rate:</p>
+                <select id="locationRefreshRate">
+                    <option value="1000">Every second</option>
+                    <option value="5000">Every 5 seconds</option>
+                    <option value="30000">Every 30 seconds</option>
+                    <option value="60000">Every minute</option>
+                    <option value="300000">Every 5 minutes</option>
+                    <option value="1800000">Every 30 minutes</option>
+                    <option value="3600000">Every hour</option>
+                </select>
+                <input type="checkbox" data-val="true" value="true" id="backgroundMode"> Background Mode
+                <button id="btnSaveSettings" onclick="saveSettings()">Save Settings</button>
+                <a href="#login">Back to Login</a>
+            </div>
+        </div>
+    </body>
+</html>

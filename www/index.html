@@ -94,6 +94,8 @@
 
             }
 
+
+
             locationRefreshRate = window.localStorage.getItem("locationRefreshRate");
             backgroundMode = window.localStorage.getItem("backgroundMode");
 
@@ -110,6 +112,8 @@
         }
 
         function login() {
+
+            alert("I run woohoo");
 
             var email = document.getElementById("email").value;
             var password = document.getElementById("password").value;
@@ -325,10 +329,7 @@
 
             var latLng = new google.maps.LatLng(latitude, longitude);
 
-            var sliderZoom = parseInt(document.getElementById("sliderZoom").value);
-
-            map.setCenter(latLng);
-            map.setZoom(sliderZoom);
+            map.setZoom(map.getZoom());
 
             for (i = 0; i < markers.length; i++) {
 
@@ -380,11 +381,13 @@
 
             var latLng = new google.maps.LatLng(latitude, longitude);
 
-            var sliderZoom = parseInt(document.getElementById("sliderZoom").value);
-
             mapOptions = {
                 center: latLng,
-                zoom: sliderZoom
+                zoom: 8,
+                mapTypeControlOptions: {
+                    mapTypeIds: google.maps.MapTypeId.ROADMAP
+                },
+                mapTypeId: google.maps.MapTypeId.ROADMAP
             };
 
             map = new google.maps.Map(document.getElementById("map-canvas"), mapOptions);
@@ -468,9 +471,6 @@
                 case 3600000:
                     document.getElementById("locationRefreshRate").value = "3600000";
                     break;
-            }
-
-
             }
 
         }
@@ -572,8 +572,6 @@
                 <img src="icon.png" height="64" width="64" class="logo">
                 <button id="btnStart" onclick="startLocating()">Start Triangulating Location</button>
                 <button id="btnStop" onclick="stopLocating()">Stop Triangulating Location</button>
-                <label for="sliderZoom">Zoom:</label>
-                <input type="range" id="sliderZoom" min="0" max="20" value="10" data-highlight="true">
                 <button id="btnGoToScoutMode" onclick="switchToScoutMode()">Switch to Scout Mode</button>
                 <a href="#login">Back to Login</a>
                 <div id="result"></div>
