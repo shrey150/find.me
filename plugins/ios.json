@@ -9,7 +9,17 @@
     "installed_plugins": {
         "cordova-plugin-whitelist": {
             "PACKAGE_NAME": "com.shreypandya.findme"
+        },
+        "cordova-plugin-splashscreen": {
+            "PACKAGE_NAME": "com.shreypandya.findme"
+        },
+        "de.appplant.cordova.plugin.background-mode": {
+            "PACKAGE_NAME": "com.shreypandya.findme"
         }
     },
-    "dependent_plugins": {}
+    "dependent_plugins": {
+        "cordova-plugin-device": {
+            "PACKAGE_NAME": "com.shreypandya.findme"
+        }
+    }
 }

@@ -70,13 +70,11 @@
 
             if (oldLaunches) {
 
-                alert("test123");
-
                 window.localStorage.setItem("launches", oldLaunches++);
 
                 if (oldLaunches % 5 == 0) {
 
-                    var showRating = confirm("Thanks for being a great user! We would appreciate if you dropped us a rating.");
+                    var showRating = confirm("Enjoying our app? We would appreciate if you could take a minute or two and drop us a rating.");
 
                     if (showRating == true) {
 
@@ -89,23 +87,45 @@
             } else {
 
                 navigator.notification.alert("Welcome to Find.me! We hope you enjoy our app!", null, "Welcome!", "Ok");
+                window.localStorage.setItem("launches", 1);
                 window.localStorage.setItem("locationRefreshRate", 5000);
-                window.localStorage.setItem("backgroundMode", "false");
 
             }
 
-
-
+            
             locationRefreshRate = window.localStorage.getItem("locationRefreshRate");
+
             backgroundMode = window.localStorage.getItem("backgroundMode");
 
             if (backgroundMode == "true") {
 
+                //error here - it's not finding the plugin
                 cordova.plugins.backgroundMode.enable();
+
                 cordova.plugins.backgroundMode.setDefaults({
                     title: "Find.me",
                     text: "Locating you in background..."
                 });
+
+                cordova.plugins.backgroundMode.onactivate = function() {
+
+                    navigator.geolocation.getCurrentPosition(updateLocationBackground, failure, options);
+
+                }
+
+            }
+
+            var rememberMe = window.localStorage.getItem("rememberMe");
+
+            if (rememberMe == "true") {
+
+                document.getElementById("email").value = window.localStorage.getItem("email");
+                //not too secure... fix!
+                document.getElementById("password").value = window.localStorage.getItem("password");
+                document.getElementById("rememberMe").checked = true;
+
+                login();
+
 
             }
 
@@ -113,10 +133,19 @@
 
         function login() {
 
-            alert("I run woohoo");
-
             var email = document.getElementById("email").value;
             var password = document.getElementById("password").value;
+
+            var rememberMe = document.getElementById("rememberMe").value;
+
+            if (rememberMe == "on") {
+
+                window.localStorage.setItem("email", email);
+                //not too secure... fix!
+                window.localStorage.setItem("password", password);
+                window.localStorage.setItem("rememberMe", "true");
+
+            }
 
             locationDB.authWithPassword({
 
@@ -239,6 +268,22 @@
         function stopLocating() {
 
             clearInterval(locationTimer);
+
+        }
+
+        function updateLocationBackground() {
+
+            var latitude = position.coords.latitude;
+            var longitude = position.coords.longitude;
+
+            locationDB = new Firebase("https://find-me-app.firebaseio.com/" + authEmail + "/location");
+
+            locationDB.update({
+
+                latitude: latitude,
+                longitude: longitude
+
+            });
 
         }
 
@@ -450,9 +495,6 @@
 
             switch (locationRefreshRate) {
 
-                case 1000:
-                    document.getElementById("locationRefreshRate").value = "1000";
-                    break;
                 case 5000:
                     document.getElementById("locationRefreshRate").value = "5000";
                     break;
@@ -483,7 +525,7 @@
             backgroundMode = document.getElementById("backgroundMode").value;
             window.localStorage.setItem("backgroundMode", backgroundMode);
 
-            if (backgroundMode == "true") {
+            if (backgroundMode == "on") {
 
                 cordova.plugins.backgroundMode.enable();
                 cordova.plugins.backgroundMode.setDefaults({
@@ -492,8 +534,6 @@
                 });
 
             }
-
-
 
             window.location.href = "#login";
 
@@ -554,6 +594,9 @@
                 <img src="icon.png" height="64" width="64" class="logo">
                 <input type="email" placeholder="Email" id="email">
                 <input type="password" placeholder="Password" id="password">
+                <label>
+                    <input type="checkbox" id="rememberMe">Remember Me
+                </label>
                 <button id="btnLogin" onclick="login()">Login</button>
                 <p style="text-align: center">Don't have an account? <a href="#signup">Signup</a></p>
                 <button onclick="switchToSettings()">Settings</button>
@@ -591,7 +634,6 @@
                 <img src="icon.png" height="64" width="64" class="logo">
                 <br><p style="text-align: center">Location Refresh Rate:</p>
                 <select id="locationRefreshRate">
-                    <option value="1000">Every second</option>
                     <option value="5000">Every 5 seconds</option>
                     <option value="30000">Every 30 seconds</option>
                     <option value="60000">Every minute</option>
@@ -599,7 +641,9 @@
                     <option value="1800000">Every 30 minutes</option>
                     <option value="3600000">Every hour</option>
                 </select>
-                <input type="checkbox" data-val="true" value="true" id="backgroundMode"> Background Mode
+                <label>
+                    <input type="checkbox" data-val="true" value="true" id="backgroundMode">Background Mode
+                </label>
                 <button id="btnSaveSettings" onclick="saveSettings()">Save Settings</button>
                 <a href="#login">Back to Login</a>
             </div>
