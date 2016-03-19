@@ -73,7 +73,7 @@
     <allow-intent href="mailto:*" />
     <allow-intent href="geo:*" />
     <platform name="android">
-        <preference name="fullscreen" value="true" />
+        <preference name="fullscreen" value="false" />
         <allow-intent href="market:*" />
     </platform>
     <platform name="ios">
