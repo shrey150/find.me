@@ -60,6 +60,21 @@
 
         function init() {
 
+            document.addEventListener("backbutton", function(e) {
+
+                if ($.mobile.activePage.is('#login')) {
+
+                    e.preventDefault();
+                    navigator.app.exitApp();
+
+                } else {
+
+                    navigator.app.backHistory();
+
+                }
+
+            }, false);
+
             document.getElementById("btnStart").style.display = "block";
             document.getElementById("btnStop").style.display = "block";
             options = {maximumAge: 3000, timeout: 5000, enableHighAccuracy: true};

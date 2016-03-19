@@ -60,6 +60,21 @@
 
         function init() {
 
+            document.addEventListener("backbutton", function(e) {
+
+                if ($.mobile.activePage.is('#login')) {
+
+                    e.preventDefault();
+                    navigator.app.exitApp();
+
+                } else {
+
+                    navigator.app.backHistory();
+
+                }
+
+            }, false);
+
             document.getElementById("btnStart").style.display = "block";
             document.getElementById("btnStop").style.display = "block";
             options = {maximumAge: 3000, timeout: 5000, enableHighAccuracy: true};
@@ -97,21 +112,15 @@
 
             backgroundMode = window.localStorage.getItem("backgroundMode");
 
-            alert("I startLocating")
-
             if (backgroundMode == "true") {
 
-                alert("yas?")
-
+                //error here - it's not finding the plugin
                 cordova.plugins.backgroundMode.enable();
 
-                alert("death do me part")
                 cordova.plugins.backgroundMode.setDefaults({
                     title: "Find.me",
                     text: "Locating you in background..."
                 });
-
-                alert('plz')
 
                 cordova.plugins.backgroundMode.onactivate = function() {
 
@@ -121,13 +130,9 @@
 
             }
 
-            alert("halp plz")
-
             var rememberMe = window.localStorage.getItem("rememberMe");
 
             if (rememberMe == "true") {
-
-                alert("I dont do voodoo... :(")
 
                 document.getElementById("email").value = window.localStorage.getItem("email");
                 //not too secure... fix!
