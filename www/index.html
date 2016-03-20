@@ -33,6 +33,7 @@
         <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBRoFA9QFLjAn0Txc-I2KChpVr1Hh9XoUY"></script>
         <script src="https://cdn.firebase.com/js/client/2.2.9/firebase.js"></script>
         <script type="text/javascript" src="cordova.js"></script>
+        <!--script type="text/javascript" src="https://raw.githubusercontent.com/ccoenraets/pull-to-refresh/master/jquery.plugin.pullToRefresh.js"></script-->
         <script>
 
         var options;
@@ -44,23 +45,99 @@
         var latitudeArray;
         var longitudeArray;
         var out;
+        var map;
+        var mapOptions;
+        var markers = [];
+        var marker;
+        var locationRefreshRate;
+        var backgroundMode;
 
         window.onload = function() {
 
-            //document.addEventListener("deviceready", init, false);
-            init();
+            document.addEventListener("deviceready", init, false);
+            //init();
 
         }
 
         function init() {
 
+            document.addEventListener("backbutton", function(e) {
+
+                if ($.mobile.activePage.is('#login')) {
+
+                    e.preventDefault();
+                    navigator.app.exitApp();
+
+                } else {
+
+                    navigator.app.backHistory();
+
+                }
+
+            }, false);
+
             document.getElementById("btnStart").style.display = "block";
             document.getElementById("btnStop").style.display = "block";
+
             options = {maximumAge: 3000, timeout: 5000, enableHighAccuracy: true};
 
-            //getLocation();
-
             locationDB = new Firebase("https://find-me-app.firebaseio.com/");
+
+            var oldLaunches = window.localStorage.getItem("launches");
+
+            if (oldLaunches) {
+
+                window.localStorage.setItem("launches", oldLaunches++);
+
+                if (oldLaunches % 5 == 0) {
+
+                    var showRating = confirm("Enjoying our app? We would appreciate if you could take a minute or two and drop us a rating.");
+
+                    if (showRating == true) {
+
+                        window.open("https://play.google.com/store/apps/details?id=com.shreypandya.findme");
+
+                    }
+
+                }
+
+            } else {
+
+                navigator.notification.alert("Welcome to Find.me! We hope you enjoy our app!", null, "Welcome!", "Ok");
+                window.localStorage.setItem("launches", 1);
+                window.localStorage.setItem("locationRefreshRate", 5000);
+
+            }
+
+            
+            locationRefreshRate = window.localStorage.getItem("locationRefreshRate");
+
+            backgroundMode = window.localStorage.getItem("backgroundMode");
+
+            if (backgroundMode == "true") {
+
+                cordova.plugins.backgroundMode.enable();
+
+                cordova.plugins.backgroundMode.setDefaults({
+                    title: "Find.me",
+                    text: "Locating you in background..."
+                });
+
+            }
+
+            var rememberMe = window.localStorage.getItem("rememberMe");
+
+            if (rememberMe == "true") {
+
+                document.getElementById("email").value = window.localStorage.getItem("email");
+                //not too secure... fix!
+                document.getElementById("password").value = window.localStorage.getItem("password");
+                document.getElementById("rememberMe").checked = true;
+
+                login();
+
+
+            }
 
         }
 
@@ -68,6 +145,17 @@
 
             var email = document.getElementById("email").value;
             var password = document.getElementById("password").value;
+
+            var rememberMe = document.getElementById("rememberMe").value;
+
+            if (rememberMe == "on") {
+
+                window.localStorage.setItem("email", email);
+                //not too secure... fix!
+                window.localStorage.setItem("password", password);
+                window.localStorage.setItem("rememberMe", "true");
+
+            }
 
             locationDB.authWithPassword({
 
@@ -78,11 +166,9 @@
 
                     if (error) {
 
-                        alert("Error signing in: " + error);
+                        navigator.notification.alert("Error signing in: " + error, null, "Error", "Try Again");
 
                     } else {
-
-                        console.log("Signed in: ", authData);
 
                         authEmail = authData.password.email;
 
@@ -92,6 +178,8 @@
                         authEmail = authEmail.replace("/", "(forwardslash)");
 
                         window.location.href = "#findLocation";
+
+                        startLocating();
 
                     }
 
@@ -108,7 +196,7 @@
 
             if (signupPassword.length < 8) {
 
-                alert("Password is too short! Make sure it's 8 characters or more.");
+                navigator.notification.alert("Password is too short: make sure it is 8 characters or more.", null, "Error", "Try Again");
 
             } else {
 
@@ -123,11 +211,9 @@
 
                             if (error) {
 
-                                alert("Error creating account: " + error);
+                                navigator.notification.alert("Error creating account: " + error, null, "Error", "Try Again");
 
                             } else {
-
-                                console.log("Created user: ", userData);
 
                                 locationDB.authWithPassword({
 
@@ -138,12 +224,12 @@
 
                                         if (error) {
 
-                                            alert("Error signing in: " + error);
+                                            navigator.notification.alert("Error signing in: " + error, null, "Error", "Try Again");
 
                                         } else {
 
                                             console.log("Signed in: ", authData);
-                                            alert("Account created and signed in!");
+                                            navigator.notification.alert("Account created and signed in!", null, "Success!", "Ok");
                                             authEmail = authData.password.email;
 
                                             authEmail = authEmail.replace(".", "(dot)");
@@ -166,6 +252,8 @@
 
                                             window.location.href = "#findLocation";
 
+                                            startLocating();
+
                                         }
 
                                 });
@@ -176,7 +264,7 @@
 
                 } else {
 
-                    alert("Passwords do not match. Try again!");
+                    navigator.notification.alert("Passwords do not match.", "Error", "Try Again");
 
                 }
 
@@ -186,7 +274,8 @@
 
         function startLocating() {
 
-            locationTimer = setInterval(getLocation, 5000);
+            getLocation();
+            locationTimer = setInterval(updateLocation, locationRefreshRate);
 
         } 
 
@@ -196,9 +285,32 @@
 
         }
 
+        cordova.plugins.backgroundMode.onactivate = function() {
+
+            navigator.geolocation.getCurrentPosition(updateLocationBackground, failure, options);
+
+        }
+
+        function updateLocationBackground() {
+
+            var latitude = position.coords.latitude;
+            var longitude = position.coords.longitude;
+
+            locationDB = new Firebase("https://find-me-app.firebaseio.com/" + authEmail + "/location");
+
+            locationDB.update({
+
+                latitude: latitude,
+                longitude: longitude
+
+            });
+
+        }
+
         function startScouting() {
 
-            scoutTimer = setInterval(getScoutInfo, 5000);
+            getScoutInfo();
+            scoutTimer = setInterval(getScoutInfo, locationRefreshRate);
 
         }
 
@@ -210,11 +322,13 @@
 
         function getScoutInfo() {
 
-            navigator.geolocation.getCurrentPosition(scoutSuccess, scoutFailure, options);
+            navigator.geolocation.getCurrentPosition(scoutSuccess, failure, options);
 
         }
 
         function scoutSuccess(position) {
+
+            out = "";
 
             var latitude = position.coords.latitude;
             var longitude = position.coords.longitude;
@@ -242,9 +356,8 @@
 
                     } else {
 
-                        out = "";
-
-                        out += "<p>Distance from a user: " + Math.min(convertCoordsToFeet(Math.abs(key.location.latitude - latitude)), convertCoordsToFeet(Math.abs(key.location.longitude - longitude))) + "</p>";
+                        out += "<p>Distance from a user: " + Math.min(convertCoordsToFeet(Math.abs(key.location.latitude - latitude)), convertCoordsToFeet(Math.abs(key.location.longitude - longitude))) + " feet</p>";
+                        document.getElementById("scoutInfo").innerHTML = out;
 
                     }
 
@@ -252,13 +365,66 @@
 
             });
 
-            document.getElementById("scoutInfo").innerHTML = out;
+        }
+
+        function updateLocation() {
+
+            navigator.geolocation.getCurrentPosition(updateSuccess, failure, options);
 
         }
 
-        function scoutFailure(message) {
+        function updateSuccess(position) {
 
-            alert("Error: " + message.message);
+            var latitude = position.coords.latitude;
+            var longitude = position.coords.longitude;
+
+            var out = "<strong>Latitude:</strong>" + latitude;
+            out += "<br/><strong>Longitude:</strong>" + longitude;
+
+            document.getElementById("result").innerHTML = out;
+
+            locationDB = new Firebase("https://find-me-app.firebaseio.com/" + authEmail + "/location");
+
+            locationDB.update({
+
+                    latitude: latitude,
+                    longitude: longitude
+
+            });
+
+            var latLng = new google.maps.LatLng(latitude, longitude);
+
+            map.setZoom(map.getZoom());
+
+            for (i = 0; i < markers.length; i++) {
+
+                markers[i].setMap(null);
+
+            }
+
+            markers = [];
+
+            locationDB = new Firebase("https://find-me-app.firebaseio.com");
+
+            locationDB.once("value", function(snapshot) {
+
+                snapshot.forEach(function(childSnapshot) {
+
+                    var key = childSnapshot.val();
+
+                    var latLng = new google.maps.LatLng(key.location.latitude, key.location.longitude);
+
+                    marker = new google.maps.Marker({
+                        position: latLng,
+                        map: map,
+                        title: "A Location"
+                    });
+
+                    markers.push(marker);
+
+                });
+
+            });
 
         }
 
@@ -280,18 +446,16 @@
 
             var latLng = new google.maps.LatLng(latitude, longitude);
 
-            var mapOptions = {
+            mapOptions = {
                 center: latLng,
-                zoom: 15
+                zoom: 8,
+                mapTypeControlOptions: {
+                    mapTypeIds: google.maps.MapTypeId.ROADMAP
+                },
+                mapTypeId: google.maps.MapTypeId.ROADMAP
             };
 
-            var map = new google.maps.Map(document.getElementById("map-canvas"), mapOptions);
-
-            var marker = new google.maps.Marker({
-                position: latLng,
-                map: map,
-                title: "Your Location"
-            });            
+            map = new google.maps.Map(document.getElementById("map-canvas"), mapOptions);
 
             locationDB = new Firebase("https://find-me-app.firebaseio.com/" + authEmail + "/location");
 
@@ -312,11 +476,13 @@
 
                     var latLng = new google.maps.LatLng(key.location.latitude, key.location.longitude);
 
-                    var marker = new google.maps.Marker({
+                    marker = new google.maps.Marker({
                         position: latLng,
                         map: map,
                         title: "A Location"
-                    }); 
+                    });
+
+                    markers.push(marker);
 
                 });
 
@@ -326,13 +492,11 @@
 
         function failure(message) {
 
-            alert("Error: " + message.message);
+            navigator.notification.alert("Error: " + message.message, null, "Error", "Try Again");
 
         }
 
         function convertCoordsToFeet(diffCoords) {
-
-            console.log(diffCoords);
 
             return Math.round(diffCoords * 364488.88888);
 
@@ -341,6 +505,69 @@
         function switchToScoutMode() {
 
             window.location.href = "#scoutMode";
+
+        }
+
+        function switchToSettings() {
+
+            window.location.href = "#settings";
+            locationRefreshRate = window.localStorage.getItem("locationRefreshRate");
+
+            switch (locationRefreshRate) {
+
+                case 5000:
+                    document.getElementById("locationRefreshRate").value = "5000";
+                    break;
+                case 30000:
+                    document.getElementById("locationRefreshRate").value = "30000";
+                    break;
+                case 60000:
+                    document.getElementById("locationRefreshRate").value = "60000";
+                    break;
+                case 300000:
+                    document.getElementById("locationRefreshRate").value = "300000";
+                    break;
+                case 1800000:
+                    document.getElementById("locationRefreshRate").value = "1800000";
+                    break;
+                case 3600000:
+                    document.getElementById("locationRefreshRate").value = "3600000";
+                    break;
+            }
+
+        }
+
+        function saveSettings() {
+
+            locationRefreshRate = parseInt(document.getElementById("locationRefreshRate").value);
+            window.localStorage.setItem("locationRefreshRate", locationRefreshRate);
+
+            backgroundMode = document.getElementById("backgroundMode").value;
+            window.localStorage.setItem("backgroundMode", backgroundMode);
+
+            if (backgroundMode == "on") {
+
+                cordova.plugins.backgroundMode.enable();
+                cordova.plugins.backgroundMode.setDefaults({
+                    title: "Find.me",
+                    text: "Locating you in background..."
+                });
+
+            }
+
+            window.location.href = "#login";
+
+        }
+
+        function backToLogin() {
+
+            window.location.href = "#login";
+
+        }
+
+        function backToLocation() {
+
+            window.location.href = "#findLocation";
 
         }
 
@@ -364,35 +591,95 @@
             width: 100%;
         }
 
+        .logo {
+
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+
+        }
+
+        .heading {
+
+            text-align: center;
+
+        }
+
         </style>
     </head>
     <body>
         <div id="container">
             <div data-role="page" id="login">
-                <h1>Welcome to Find.me!</h1>
+                <h1 class="heading">Find.me</h1>
+                <img src="icon.png" height="64" width="64" class="logo">
                 <input type="email" placeholder="Email" id="email">
                 <input type="password" placeholder="Password" id="password">
+                <label>
+                    <input type="checkbox" id="rememberMe">Remember Me
+                </label>
                 <button id="btnLogin" onclick="login()">Login</button>
-                <p>Don't have an account?</p><a href="#signup">Signup</a>
+                <p style="text-align: center">Don't have an account? <a href="#signup">Signup</a></p>
             </div>
             <div data-role="page" id="signup">
-                <h1>Signup</h1>
+                <h1 class="heading">Signup</h1>
+                <img src="icon.png" height="64" width="64" class="logo">
                 <input type="email" placeholder="Email" id="signupEmail">
                 <input type="password" placeholder="Password" id="signupPassword">
                 <input type="password" placeholder="Confirm Password" id="confirmPassword">
                 <button id="btnSignup" onclick="signup()">Signup and Login</button>
+                <a href="#login">Back to Login</a>
             </div>
+
             <div data-role="page" id="findLocation">
-                <button id="btnStart" onclick="startLocating()">Start Triangulating Location</button>
-                <button id="btnStop" onclick="stopLocating()">Stop Triangulating Location</button>
-                <button id="btnGoToScoutMode" onclick="switchToScoutMode()">Switch to Scout Mode</button>
-                <div id="result"></div>
-                <div id="map-canvas"></div>
-            </div>
-            <div data-role="page" id="scoutMode">
-                <button id="btnStartScoutMode" onclick="startScouting()">Start Scouting</button>
-                <button id="btnStopScoutMode" onclick="stopScouting()">Stop Scouting</button>
-                <div id="scoutInfo"></div>
+                <div data-role="tabs" id="tabs">
+                    <div data-role="navbar">
+                        <ul>
+                            <li><a href="#one" data-ajax="false">MAP</a></li>
+                            <li><a href="#two" data-ajax="false">SCOUT</a></li>
+                            <!--li><a href="#four" data-ajax="false">PEOPLE</a></li-->
+                            <li><a href="#three" data-ajax="false">SETTINGS</a></li>
+                        </ul>
+                    </div>
+                    <div id="one" class="ui-body-d ui-content">
+                        <div id="map-canvas"></div>
+                        <div id="result"></div>
+                        <button id="btnStart" onclick="startLocating()">Start Triangulating Location</button>
+                        <button id="btnStop" onclick="stopLocating()">Stop Triangulating Location</button>
+                    </div>
+                    <div id="two" class="ui-body-d ui-content">
+                        <p>Scout Mode lets you find the nearest user's location in feet.</p>
+                        <button id="btnStartScoutMode" onclick="startScouting()">Start Scouting</button>
+                        <button id="btnStopScoutMode" onclick="stopScouting()">Stop Scouting</button>
+                        <div id="scoutInfo"></div>
+                    </div>
+                    <div id="three" class="ui-body-d ui-content">
+                        <br><p style="text-align: center">Location Refresh Rate:</p>
+                        <select id="locationRefreshRate">
+                            <option value="5000">Every 5 seconds</option>
+                            <option value="30000">Every 30 seconds</option>
+                            <option value="60000">Every minute</option>
+                            <option value="300000">Every 5 minutes</option>
+                            <option value="1800000">Every 30 minutes</option>
+                            <option value="3600000">Every hour</option>
+                        </select>
+                        <label>
+                            <input type="checkbox" data-val="true" value="true" id="backgroundMode">Background Mode
+                        </label>
+                        <button id="btnSaveSettings" onclick="saveSettings()">Save Settings</button>
+                    </div>
+                    <!--div id="four" class="ui-body-d ui-content">
+                        <div class="scrollable">
+                            <div class="wrap">
+                                <h3>Friend Requests:</h3>
+                                <div id="requests"></div>
+                                <h3>Current Friends:</h3>
+                                <div id="friends"></div>
+                                <h3>All users:</h3>
+                                <div id="users"></div>
+                            </div>
+                        </div>
+                    </div-->
+                </div>
             </div>
         </div>
     </body>
