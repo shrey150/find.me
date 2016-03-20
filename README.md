@@ -3,6 +3,6 @@ Find.me is a Phonegap app that uses Firebase to store users' locations and displ
 -----
 #Todo:
 
-1. Fix problem with background mode
+1. <s>Fix problem with background mode</s> This is because the plugin can only be added in Build
 2. Fix Google Maps Crash Bug
-3. Redesign UI to be more Android-y
+3. <s>Redesign UI to be more Android-y</s>Find.me 1.5, yet this can always be worked on
