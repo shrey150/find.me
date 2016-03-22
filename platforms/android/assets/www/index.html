@@ -33,6 +33,7 @@
         <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBRoFA9QFLjAn0Txc-I2KChpVr1Hh9XoUY"></script>
         <script src="https://cdn.firebase.com/js/client/2.2.9/firebase.js"></script>
         <script type="text/javascript" src="cordova.js"></script>
+        <!--script type="text/javascript" src="https://raw.githubusercontent.com/ccoenraets/pull-to-refresh/master/jquery.plugin.pullToRefresh.js"></script-->
         <script>
 
         var options;
@@ -77,6 +78,7 @@
 
             document.getElementById("btnStart").style.display = "block";
             document.getElementById("btnStop").style.display = "block";
+
             options = {maximumAge: 3000, timeout: 5000, enableHighAccuracy: true};
 
             locationDB = new Firebase("https://find-me-app.firebaseio.com/");
@@ -114,19 +116,12 @@
 
             if (backgroundMode == "true") {
 
-                //error here - it's not finding the plugin
                 cordova.plugins.backgroundMode.enable();
 
                 cordova.plugins.backgroundMode.setDefaults({
                     title: "Find.me",
                     text: "Locating you in background..."
                 });
-
-                cordova.plugins.backgroundMode.onactivate = function() {
-
-                    navigator.geolocation.getCurrentPosition(updateLocationBackground, failure, options);
-
-                }
 
             }
 
@@ -183,6 +178,8 @@
                         authEmail = authEmail.replace("/", "(forwardslash)");
 
                         window.location.href = "#findLocation";
+
+                        startLocating();
 
                     }
 
@@ -255,6 +252,8 @@
 
                                             window.location.href = "#findLocation";
 
+                                            startLocating();
+
                                         }
 
                                 });
@@ -283,6 +282,12 @@
         function stopLocating() {
 
             clearInterval(locationTimer);
+
+        }
+
+        cordova.plugins.backgroundMode.onactivate = function() {
+
+            navigator.geolocation.getCurrentPosition(updateLocationBackground, failure, options);
 
         }
 
@@ -614,7 +619,6 @@
                 </label>
                 <button id="btnLogin" onclick="login()">Login</button>
                 <p style="text-align: center">Don't have an account? <a href="#signup">Signup</a></p>
-                <button onclick="switchToSettings()">Settings</button>
             </div>
             <div data-role="page" id="signup">
                 <h1 class="heading">Signup</h1>
@@ -625,42 +629,57 @@
                 <button id="btnSignup" onclick="signup()">Signup and Login</button>
                 <a href="#login">Back to Login</a>
             </div>
+
             <div data-role="page" id="findLocation">
-                <h1 class="heading">Find Locations</h1>
-                <img src="icon.png" height="64" width="64" class="logo">
-                <button id="btnStart" onclick="startLocating()">Start Triangulating Location</button>
-                <button id="btnStop" onclick="stopLocating()">Stop Triangulating Location</button>
-                <button id="btnGoToScoutMode" onclick="switchToScoutMode()">Switch to Scout Mode</button>
-                <a href="#login">Back to Login</a>
-                <div id="result"></div>
-                <div id="map-canvas"></div>
-            </div>
-            <div data-role="page" id="scoutMode">
-                <h1 class="heading">Scout Mode</h1>
-                <img src="icon.png" height="64" width="64" class="logo">
-                <p>Scout Mode lets you find the nearest user's location in feet.</p>
-                <button id="btnStartScoutMode" onclick="startScouting()">Start Scouting</button>
-                <button id="btnStopScoutMode" onclick="stopScouting()">Stop Scouting</button>
-                <a href="#findLocation">Back to Locating</a>
-                <div id="scoutInfo"></div>
-            </div>
-            <div data-role="page" id="settings">
-                <h1 class="heading">Settings</h1>
-                <img src="icon.png" height="64" width="64" class="logo">
-                <br><p style="text-align: center">Location Refresh Rate:</p>
-                <select id="locationRefreshRate">
-                    <option value="5000">Every 5 seconds</option>
-                    <option value="30000">Every 30 seconds</option>
-                    <option value="60000">Every minute</option>
-                    <option value="300000">Every 5 minutes</option>
-                    <option value="1800000">Every 30 minutes</option>
-                    <option value="3600000">Every hour</option>
-                </select>
-                <label>
-                    <input type="checkbox" data-val="true" value="true" id="backgroundMode">Background Mode
-                </label>
-                <button id="btnSaveSettings" onclick="saveSettings()">Save Settings</button>
-                <a href="#login">Back to Login</a>
+                <div data-role="tabs" id="tabs">
+                    <div data-role="navbar">
+                        <ul>
+                            <li><a href="#one" data-ajax="false">MAP</a></li>
+                            <li><a href="#two" data-ajax="false">SCOUT</a></li>
+                            <!--li><a href="#four" data-ajax="false">PEOPLE</a></li-->
+                            <li><a href="#three" data-ajax="false">SETTINGS</a></li>
+                        </ul>
+                    </div>
+                    <div id="one" class="ui-body-d ui-content">
+                        <div id="map-canvas"></div>
+                        <div id="result"></div>
+                        <button id="btnStart" onclick="startLocating()">Start Triangulating Location</button>
+                        <button id="btnStop" onclick="stopLocating()">Stop Triangulating Location</button>
+                    </div>
+                    <div id="two" class="ui-body-d ui-content">
+                        <p>Scout Mode lets you find the nearest user's location in feet.</p>
+                        <button id="btnStartScoutMode" onclick="startScouting()">Start Scouting</button>
+                        <button id="btnStopScoutMode" onclick="stopScouting()">Stop Scouting</button>
+                        <div id="scoutInfo"></div>
+                    </div>
+                    <div id="three" class="ui-body-d ui-content">
+                        <br><p style="text-align: center">Location Refresh Rate:</p>
+                        <select id="locationRefreshRate">
+                            <option value="5000">Every 5 seconds</option>
+                            <option value="30000">Every 30 seconds</option>
+                            <option value="60000">Every minute</option>
+                            <option value="300000">Every 5 minutes</option>
+                            <option value="1800000">Every 30 minutes</option>
+                            <option value="3600000">Every hour</option>
+                        </select>
+                        <label>
+                            <input type="checkbox" data-val="true" value="true" id="backgroundMode">Background Mode
+                        </label>
+                        <button id="btnSaveSettings" onclick="saveSettings()">Save Settings</button>
+                    </div>
+                    <!--div id="four" class="ui-body-d ui-content">
+                        <div class="scrollable">
+                            <div class="wrap">
+                                <h3>Friend Requests:</h3>
+                                <div id="requests"></div>
+                                <h3>Current Friends:</h3>
+                                <div id="friends"></div>
+                                <h3>All users:</h3>
+                                <div id="users"></div>
+                            </div>
+                        </div>
+                    </div-->
+                </div>
             </div>
         </div>
     </body>
