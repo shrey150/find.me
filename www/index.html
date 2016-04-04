@@ -183,7 +183,6 @@
             //gets previously saved backgroundMode (whether to enable or not)
             backgroundMode = window.localStorage.getItem("backgroundMode");
 
-            
             //if background mode is enabled,
             //enable the library and set
             //the default message for it
@@ -197,6 +196,7 @@
                 });
 
             }
+            */
 
             //gets previously saved rememberMe (whether or not to save password)
             var rememberMe = window.localStorage.getItem("rememberMe");
@@ -451,7 +451,7 @@
                     //gets path to username, then narrows down to only username
                     var snapshotVal = childSnapshot.ref().toString();
                     var snapshotArr = snapshotVal.split("/");
-                    var scoutUser = snapshotArr[3];
+                    var locatingUser = snapshotArr[3];
 
                     //gets rid of the web link formatting and database formatting
                     locatingUser = locatingUser.replace("%40", "@");
@@ -467,7 +467,7 @@
                     } else {
 
                         //complicated math done to convert latitude and longitude into feet
-                        out += "<p>Distance from " + scoutUser + ": " + Math.min(convertCoordsToFeet(Math.abs(key.location.latitude - latitude)), convertCoordsToFeet(Math.abs(key.location.longitude - longitude))) + " feet</p>";
+                        out += "<p>Distance from " + locatingUser + ": " + Math.min(convertCoordsToFeet(Math.abs(key.location.latitude - latitude)), convertCoordsToFeet(Math.abs(key.location.longitude - longitude))) + " feet</p>";
 
                         //add to list
                         document.getElementById("scoutInfo").innerHTML = out;
