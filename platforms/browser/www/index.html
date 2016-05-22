@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<!--
+    Copyright (c) 2012-2014 Adobe Systems Incorporated. All rights reserved.
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements.  See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership.  The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License.  You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+     KIND, either express or implied.  See the License for the
+    specific language governing permissions and limitations
+    under the License.
+-->
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="format-detection" content="telephone=no" />
+        <meta name="msapplication-tap-highlight" content="no" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, target-densitydpi=medium-dpi, user-scalable=0" />
+        <title>Find.me</title>
+        <link rel="stylesheet" href="http://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.css" />
+        <script src="http://code.jquery.com/jquery-1.11.1.min.js"></script>
+        <script src="http://code.jquery.com/mobile/1.4.5/jquery.mobile-1.4.5.min.js"></script>
+        <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBRoFA9QFLjAn0Txc-I2KChpVr1Hh9XoUY"></script>
+        <script src="https://cdn.firebase.com/js/client/2.2.9/firebase.js"></script>
+        <script type="text/javascript" src="cordova.js"></script>
+        <link rel="stylesheet" href="http://example.gajotres.net/iscrollview/jquery.mobile.iscrollview.css" />
+        <link rel="stylesheet" href="http://example.gajotres.net/iscrollview/jquery.mobile.iscrollview-pull.css" />
+        <script type="text/javascript" src="http://example.gajotres.net/iscrollview/iscroll.js"></script>
+        <script type="text/javascript" src="http://example.gajotres.net/iscrollview/jquery.mobile.iscrollview.js"></script>
+        <script type="text/javascript" src="index.js"></script>
+        <style>
+
+        #container {
+            margin: 5px;
+        }
+
+        #btnStart {
+            display: none;
+        }
+
+        #btnStop {
+            display: none;
+        }
+
+        #map-canvas {
+            height: 400px;
+            width: 100%;
+        }
+
+        .logo {
+
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+
+        }
+
+        .heading {
+
+            text-align: center;
+
+        }
+
+        .ui-content {
+            padding: 0 !important;
+        }
+
+        .ui-listview {
+            margin: 0 !important;
+        }
+
+        .wrapper, .wrapper div.iscroll-scroller {
+            width: 100% !important;
+        }  
+
+        </style>
+    </head>
+    <body>
+        <div id="container">
+            <!--Login Page-->
+            <div data-role="page" id="login">
+                <h1 class="heading">Find.me</h1>
+                <img src="icon.png" height="64" width="64" class="logo">
+                <input type="email" placeholder="Email" id="email">
+                <input type="password" placeholder="Password" id="password">
+                <label>
+                    <input type="checkbox" id="rememberMe">Remember Me
+                </label>
+                <button id="btnLogin" onclick="login()">Login</button>
+                <p style="text-align: center">Don't have an account? <a href="#signup">Signup</a></p>
+            </div>
+            <!--Signup Page-->
+            <div data-role="page" id="signup">
+                <h1 class="heading">Signup</h1>
+                <img src="icon.png" height="64" width="64" class="logo">
+                <input type="email" placeholder="Email" id="signupEmail">
+                <input type="password" placeholder="Password" id="signupPassword">
+                <input type="password" placeholder="Confirm Password" id="confirmPassword">
+                <button id="btnSignup" onClick="signup()">Signup and Login</button>
+            </div>
+            <!--Location Page-->
+            <div data-role="page" id="findLocation">
+                <div data-role="tabs" id="tabs">
+                    <div data-role="navbar">
+                        <ul>
+                            <li><a href="#one" data-ajax="false">MAP</a></li>
+                            <li><a href="#two" data-ajax="false">SCOUT</a></li>
+                            <li><a href="#four" data-ajax="false">PEOPLE</a></li>
+                            <li><a href="#three" data-ajax="false">SETTINGS</a></li>
+                        </ul>
+                    </div>
+                    <!--Map Tab-->
+                    <div id="one" class="ui-body-d ui-content">
+                        <div id="map-canvas"></div>
+                        <div id="result"></div>
+                        <button id="btnStart" onClick="startLocating()">Start Triangulating Location</button>
+                        <button id="btnStop" onClick="stopLocating()">Stop Triangulating Location</button>
+                    </div>
+                    <!--Scout Tab-->
+                    <div id="two" class="ui-body-d ui-content">
+                        <p>Scout Mode lets you find the nearest user's location in feet.</p>
+                        <button id="btnStartScoutMode" onClick="startScouting()">Start Scouting</button>
+                        <button id="btnStopScoutMode" onClick="stopScouting()">Stop Scouting</button>
+                        <div id="scoutInfo"></div>
+                    </div>
+                    <!--Settings Tab-->
+                    <div id="three" class="ui-body-d ui-content">
+                        <p style="text-align: center">Location Refresh Rate:</p>
+                        <select id="locationRefreshRate">
+                            <option value="5000">Every 5 seconds</option>
+                            <option value="30000">Every 30 seconds</option>
+                            <option value="60000">Every minute</option>
+                            <option value="300000">Every 5 minutes</option>
+                            <option value="1800000">Every 30 minutes</option>
+                            <option value="3600000">Every hour</option>
+                        </select>
+                        <p style="text-align: center">Users to Show:</p>
+                        <select id="userScope">
+                            <option value="everyone">Everyone</option>
+                            <option value="friend">Friends Only</option>
+                            <option value="parent">Parents Only</option>
+                            <option value="child">Children Only</option>
+                        </select>
+                        <p style="text-align: center">Who to share with:</p>
+                        <select id="shareScope">
+                            <option value="everyone">Everyone</option>
+                            <option value="friend">Friends Only</option>
+                            <option value="parent">Parents Only</option>
+                            <option value="child">Children Only</option>
+                        </select>
+                        <label>
+                            <input type="checkbox" data-val="true" value="true" id="backgroundMode">Background Mode
+                        </label>
+                        <button id="btnSaveSettings" onClick="saveSettings()">Save Settings</button>
+                    </div>
+                    <!--People Tab-->
+                    <div id="four" data-role="content" class="ui-body-d ui-content">
+                        <!--Scroller for list-->
+                        <div class="wrapper" data-iscroll>
+                            <div class="iscroll-pulldown">
+                                <span class="iscroll-pull-icon"><img src="icon.png" height="40" width="40" class="logo"></span>
+                                <span class="iscroll-pull-label">Pull down to refresh...</span>
+                            </div>
+                            <ul id="users" data-role="listview">
+                                <li>Pull to Refresh</li>      
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!--User Page-->
+            <div data-role="page" id="user_page">
+                <h1 class="heading" id="user_title">Username</h1>
+                <button onClick="friendUser()">Friend user</button>
+                <select id="relationFriend">
+                    <option value="friend">Friend</option>
+                    <option value="child">Child</option>
+                    <option value="parent">Parent</option>
+                </select>
+                <button onClick="saveFriendSettings()">Save Friend Settings</button>
+            </div>
+        </div>
+    </body>
+</html>
