@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<widget id="com.shreypandya.findme" version="1.6" xmlns="http://www.w3.org/ns/widgets" xmlns:gap="http://phonegap.com/ns/1.0">
+<widget id="com.shreypandya.findme" version="1.6.5" xmlns="http://www.w3.org/ns/widgets" xmlns:gap="http://phonegap.com/ns/1.0">
     <name>Find.me</name>
     <description>Find the people in your life with Find.me</description>
     <author email="shrey150@yahoo.com" href="http://shreypandya.com">Shrey Pandya</author>
@@ -39,7 +39,7 @@
     <gap:plugin name="org.apache.cordova.vibration" />
     <gap:plugin name="org.apache.cordova.inappbrowser" />
     <gap:plugin name="de.appplant.cordova.plugin.background-mode" />
-    <icon src="icon.png" />
+    <icon src="img/icon.png" gap:role="default" />
     <icon gap:platform="android" gap:qualifier="ldpi" src="www/res/icon/android/icon-36-ldpi.png" />
     <icon gap:platform="android" gap:qualifier="mdpi" src="www/res/icon/android/icon-48-mdpi.png" />
     <icon gap:platform="android" gap:qualifier="hdpi" src="www/res/icon/android/icon-72-hdpi.png" />
