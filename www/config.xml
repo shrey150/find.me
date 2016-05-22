@@ -3,7 +3,8 @@
     <name>Find.me</name>
     <description>Find the people in your life with Find.me</description>
     <author email="shrey150@yahoo.com" href="http://shreypandya.com">Shrey Pandya</author>
-    <content src="index.html" />
+    <preference name="prerendered-icon" value="true"/>
+    <content    src="index.html" />
     <preference name="permissions" value="none" />
     <preference name="orientation" value="default" />
     <preference name="target-device" value="universal" />
